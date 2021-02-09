@@ -1,4 +1,4 @@
-Python package for Microchip's ATECCx08 cryptographic co-processors with secure hardware-based key storage.
+Python package for Microchip's ATECC508/ATECC608 cryptographic co-processors with secure hardware-based key storage.
 
 This package is based on Adafruit's https://github.com/adafruit/Adafruit_CircuitPython_ATECC library and has been
 adapted to work on a regular Python interpreter, using SMBus2 (https://github.com/kplindegaard/smbus2).

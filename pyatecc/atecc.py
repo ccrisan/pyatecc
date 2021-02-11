@@ -66,7 +66,9 @@ OP_SHA = 0x47
 OP_LOCK = 0x17
 OP_GEN_KEY = 0x40
 OP_SIGN = 0x41
+OP_READ = 0x02
 OP_WRITE = 0x12
+OP_PRIV_WRITE = 0x46
 
 # Maximum execution times, in milliseconds (9-4)
 EXEC_TIME = {
@@ -78,7 +80,9 @@ EXEC_TIME = {
     OP_LOCK: 32,
     OP_GEN_KEY: 115,
     OP_SIGN: 70,
+    OP_READ: 1,
     OP_WRITE: 26,
+    OP_PRIV_WRITE: 48
 }
 
 
@@ -144,7 +148,7 @@ class ATECC:
     @property
     def locked(self):
         """Returns if the ATECC is locked."""
-        config = self._read(0x00, 0x15, 4)
+        config = self.read(0x00, 0x15, 4)
         time.sleep(0.001)
         return config[2] == 0x0 and config[3] == 0x00
 
@@ -152,12 +156,12 @@ class ATECC:
     def serial_number(self):
         """Returns the ATECC serial number."""
         # 4-byte reads only
-        serial_num = self._read(0, 0x00, 4)
+        serial_num = self.read(0, 0x00, 4)
         time.sleep(0.001)
-        serial_num += self._read(0, 0x02, 4)
+        serial_num += self.read(0, 0x02, 4)
         time.sleep(0.001)
         # Append Rev
-        serial_num += self._read(0, 0x03, 4)[:1]
+        serial_num += self.read(0, 0x03, 4)[:1]
         time.sleep(0.001)
         # neaten up the serial for printing
         serial_num = str(hexlify(bytes(serial_num)), "utf-8")
@@ -182,7 +186,7 @@ class ATECC:
         :param int zone: ATECC zone to lock.
         """
         self.wakeup()
-        self._send_command(0x17, 0x80 | zone, 0x0000)
+        self._send_command(OP_LOCK, 0x80 | zone, 0x0000)
         time.sleep(EXEC_TIME[OP_LOCK] / 1000)
         res = self._get_response(1)
         assert res[0] == 0x00, "Failed locking ATECC!"
@@ -379,7 +383,7 @@ class ATECC:
         :param int slot_id: ECC slot containing key for use with signature.
         """
         self.wakeup()
-        self._send_command(0x41, 0x80, slot_id)
+        self._send_command(OP_SIGN, 0x80, slot_id)
         time.sleep(EXEC_TIME[OP_SIGN] / 1000)
         signature = self._get_response(64)
         self.idle()
@@ -394,26 +398,26 @@ class ATECC:
             if i == 84:
                 # can't write
                 continue
-            self._write(0, i // 4, data[i : i + 4])
+            self.write(0, i // 4, data[i : i + 4])
 
-    def _write(self, zone, address, buffer):
+    def write(self, zone, address, buffer):
         self.wakeup()
         if len(buffer) not in (4, 32):
             raise RuntimeError("Only 4 or 32-byte writes supported.")
         if len(buffer) == 32:
             zone |= 0x80
-        self._send_command(0x12, zone, address, buffer)
+        self._send_command(OP_WRITE, zone, address, buffer)
         time.sleep(26 / 1000)
         status = self._get_response(1)
         self.idle()
 
-    def _read(self, zone, address, length):
+    def read(self, zone, address, length):
         self.wakeup()
         if length not in (4, 32):
             raise RuntimeError("Only 4 and 32 byte reads supported")
         if length == 32:
             zone |= 0x80
-        self._send_command(2, zone, address)
+        self._send_command(OP_READ, zone, address)
         time.sleep(0.005)
         buffer = self._get_response(length)
         time.sleep(0.001)
@@ -461,7 +465,7 @@ class ATECC:
             try:
                 r_msg = i2c_msg.read(self._address, length + 3)
                 self._i2c.i2c_rdwr(r_msg)
-                response = list(r_msg)
+                response = bytes(r_msg)
                 break
             except OSError:
                 pass

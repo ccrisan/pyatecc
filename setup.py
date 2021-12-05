@@ -7,7 +7,7 @@ from setuptools import setup
 
 setup(
     name="pyatecc",
-    version='1.0.0-beta.1',
+    version='1.0.0-beta.2',
     description="Driver for Microchip's ATECC508/ATECC608 cryptographic co-processors with secure hardware-based key storage",
     long_description_content_type="text/markdown",
     url="https://github.com/ccrisan/pyatecc",

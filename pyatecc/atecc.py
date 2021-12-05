@@ -58,31 +58,33 @@ _WAKE_CLK_FREQ = 100000  # slower clock speed
 _TWLO_TIME = 6e-5  # TWlo, in microseconds
 
 # Command Opcodes (9-1-3)
-OP_COUNTER = 0x24
-OP_INFO = 0x30
-OP_NONCE = 0x16
-OP_RANDOM = 0x1B
-OP_SHA = 0x47
-OP_LOCK = 0x17
-OP_GEN_KEY = 0x40
-OP_SIGN = 0x41
 OP_READ = 0x02
 OP_WRITE = 0x12
+OP_NONCE = 0x16
+OP_LOCK = 0x17
+OP_RANDOM = 0x1B
+OP_COUNTER = 0x24
+OP_INFO = 0x30
+OP_GEN_KEY = 0x40
+OP_SIGN = 0x41
+OP_ECDH = 0x43
 OP_PRIV_WRITE = 0x46
+OP_SHA = 0x47
 
 # Maximum execution times, in milliseconds (9-4)
 EXEC_TIME = {
-    OP_COUNTER: 20,
-    OP_INFO: 1,
-    OP_NONCE: 7,
-    OP_RANDOM: 23,
-    OP_SHA: 47,
-    OP_LOCK: 32,
-    OP_GEN_KEY: 115,
-    OP_SIGN: 70,
     OP_READ: 1,
     OP_WRITE: 26,
-    OP_PRIV_WRITE: 48
+    OP_NONCE: 7,
+    OP_LOCK: 32,
+    OP_RANDOM: 23,
+    OP_COUNTER: 20,
+    OP_INFO: 1,
+    OP_GEN_KEY: 115,
+    OP_SIGN: 70,
+    OP_ECDH: 58,
+    OP_PRIV_WRITE: 48,
+    OP_SHA: 47,
 }
 
 
@@ -350,11 +352,11 @@ class ATECC:
 
     def gen_key(self, slot_num, private_key=False):
         """Generates a private or public key.
-        :param int slot_num: ECC slot (from 0 to 4).
+        :param int slot_num: ECC slot (from 0 to 15).
         :param bool private_key: Generates a private key if true.
 
         """
-        assert 0 <= slot_num <= 4, "Provided slot must be between 0 and 4."
+        assert 0 <= slot_num <= 15, "Provided slot must be between 0 and 4."
         self.wakeup()
         if private_key:
             self._send_command(OP_GEN_KEY, 0x04, slot_num)
@@ -388,6 +390,19 @@ class ATECC:
         signature = self._get_response(64)
         self.idle()
         return signature
+
+    def ecdh(self, slot_id, x, y):
+        """Generate an ECDH master secret using stored private key and input public key.
+        :param int slot_id: ECC slot containing key.
+        :param bytes x: The X component of the public key to be used for ECDH calculation.
+        :param bytes y: The Y component of the public key to be used for ECDH calculation.
+        """
+        self.wakeup()
+        self._send_command(OP_ECDH, 0x00, slot_id, x + y)
+        time.sleep(EXEC_TIME[OP_ECDH] / 1000)
+        secret = self._get_response(32)
+        self.idle()
+        return secret
 
     def write_config(self, data):
         """Writes configuration data to the device's EEPROM.

@@ -235,10 +235,10 @@ class ATECC:
         time.sleep(EXEC_TIME[OP_NONCE] / 1000)
         calculated_nonce = self._get_response(calculated_nonce_len)
         time.sleep(1 / 1000)
-        if mode == 0x03:
-            assert (
-                calculated_nonce[0] == 0x00
-            ), "Incorrectly calculated nonce in pass-thru mode"
+        #if mode == 0x03:
+        #    assert (
+        #        calculated_nonce[0] == 0x00
+        #    ), "Incorrectly calculated nonce in pass-thru mode"
         self.idle()
         return calculated_nonce
 
